@@ -25,7 +25,11 @@ func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if dec.PeekKind() != 'n' {
-		return json.UnmarshalDecode(dec, &o.value)
+		err := json.UnmarshalDecode(dec, &o.value)
+		if err == nil {
+			o.valid = true
+		}
+		return err
 	} else {
 		_, err := dec.ReadToken()
 		if err == nil {
