@@ -24,6 +24,14 @@ func (o Option[T]) IsNone() bool {
 	return !o.valid
 }
 
+func (o Option[T]) Expect(msg string) T {
+	if o.valid {
+		return o.value
+	} else {
+		panic(msg)
+	}
+}
+
 func (o Option[T]) Unwrap() T {
 	if o.valid {
 		return o.value
