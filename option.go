@@ -3,6 +3,14 @@
 
 package option
 
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
+)
+
 type Option[T any] struct {
 	value T
 	valid bool
@@ -67,4 +75,60 @@ func (o Option[T]) UnwrapOrElse(fn func() T) T {
 // Returns the contained `Some` value or the zero value for type T.
 func (o Option[T]) UnwrapOrZero() T {
 	return o.value
+}
+
+func (o Option[T]) String() string {
+	if o.valid {
+		return fmt.Sprintf("Some(%v)", o.value)
+	} else {
+		return "None"
+	}
+}
+
+func (o Option[T]) GoString() string {
+	if o.valid {
+		return fmt.Sprintf("option.Some(%#v)", o.value)
+	} else {
+		return fmt.Sprintf("option.None[%T]()", o.value)
+	}
+}
+
+var (
+	_ json.MarshalerTo     = (*Option[int])(nil)
+	_ json.UnmarshalerFrom = (*Option[int])(nil)
+)
+
+func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
+	if o.valid {
+		return json.MarshalEncode(enc, o.value)
+	} else {
+		return enc.WriteToken(jsontext.Null)
+	}
+}
+
+func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if dec.PeekKind() != 'n' {
+		err := json.UnmarshalDecode(dec, &o.value)
+		if err == nil {
+			o.valid = true
+		}
+		return err
+	} else {
+		_, err := dec.ReadToken()
+		if err == nil {
+			*o = None[T]()
+		}
+		return err
+	}
+}
+
+func (o Option[T]) IsZero() bool {
+	if o.valid {
+		if i, ok := any(o.value).(interface{ IsZero() bool }); ok {
+			return i.IsZero()
+		}
+		return reflect.ValueOf(o.value).IsZero()
+	} else {
+		return true
+	}
 }
