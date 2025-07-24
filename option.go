@@ -51,7 +51,3 @@ func (o Option[T]) UnwrapOrElse(fn func() T) T {
 func (o Option[T]) UnwrapOrZero() T {
 	return o.value
 }
-
-func (o Option[T]) UnwrapUnchecked() T {
-	return o.value
-}
