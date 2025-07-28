@@ -124,10 +124,11 @@ func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 func (o Option[T]) IsZero() bool {
 	if o.valid {
-		if i, ok := any(o.value).(interface{ IsZero() bool }); ok {
+		a := any(o.value)
+		if i, ok := a.(interface{ IsZero() bool }); ok {
 			return i.IsZero()
 		}
-		return reflect.ValueOf(o.value).IsZero()
+		return reflect.ValueOf(a).IsZero()
 	} else {
 		return true
 	}
