@@ -100,7 +100,7 @@ var (
 
 func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if o.valid {
-		return json.MarshalEncode(enc, o.value)
+		return json.MarshalEncode(enc, &o.value) // avoid boxing on the heap
 	} else {
 		return enc.WriteToken(jsontext.Null)
 	}
