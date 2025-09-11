@@ -6,6 +6,7 @@ package option
 import (
 	"fmt"
 	"reflect"
+	"unsafe"
 
 	"github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -79,7 +80,7 @@ func (o Option[T]) UnwrapOrZero() T {
 
 func (o Option[T]) String() string {
 	if o.valid {
-		return fmt.Sprintf("Some(%v)", o.value)
+		return fmt.Sprintf("Some(%v)", elem(&o.value))
 	} else {
 		return "None"
 	}
@@ -87,9 +88,9 @@ func (o Option[T]) String() string {
 
 func (o Option[T]) GoString() string {
 	if o.valid {
-		return fmt.Sprintf("option.Some(%#v)", o.value)
+		return fmt.Sprintf("option.Some(%#v)", elem(&o.value))
 	} else {
-		return fmt.Sprintf("option.None[%T]()", o.value)
+		return fmt.Sprintf("option.None[%T]()", elem(&o.value))
 	}
 }
 
@@ -129,7 +130,7 @@ func isKindValid(k jsontext.Kind) bool {
 
 func (o Option[T]) IsZero() bool {
 	if o.valid {
-		a := any(o.value)
+		a := elem(&o.value)
 		if i, ok := a.(interface{ IsZero() bool }); ok {
 			return i.IsZero()
 		}
@@ -137,4 +138,23 @@ func (o Option[T]) IsZero() bool {
 	} else {
 		return true
 	}
+}
+
+//go:nosplit
+func elem[P ~*E, E any](p P) any {
+	typ := reflect.TypeFor[E]()
+	return *(*any)(unsafe.Pointer(&iface{
+		Type: (*iface)(unsafe.Pointer(&typ)).Data,
+		Data: noEscape(unsafe.Pointer(p)),
+	}))
+}
+
+type iface struct {
+	Type, Data unsafe.Pointer
+}
+
+//go:nosplit
+func noEscape(p unsafe.Pointer) unsafe.Pointer {
+	x := uintptr(p)
+	return unsafe.Pointer(x ^ 0) //nolint:all
 }
