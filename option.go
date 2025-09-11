@@ -10,12 +10,22 @@ import (
 
 	"github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
+	jsonv1 "github.com/go-json-experiment/json/v1"
 )
 
 type Option[T any] struct {
 	value T
 	valid bool
 }
+
+var (
+	_ fmt.Stringer         = (*Option[int])(nil)
+	_ fmt.GoStringer       = (*Option[int])(nil)
+	_ json.Marshaler       = (*Option[int])(nil)
+	_ json.Unmarshaler     = (*Option[int])(nil)
+	_ json.MarshalerTo     = (*Option[int])(nil)
+	_ json.UnmarshalerFrom = (*Option[int])(nil)
+)
 
 // Return a `Some` value containing the given value.
 func Some[T any](value T) Option[T] {
@@ -94,10 +104,29 @@ func (o Option[T]) GoString() string {
 	}
 }
 
-var (
-	_ json.MarshalerTo     = (*Option[int])(nil)
-	_ json.UnmarshalerFrom = (*Option[int])(nil)
-)
+func (o Option[T]) MarshalJSON() ([]byte, error) {
+	if o.valid {
+		return jsonv1.Marshal(noEscape(&o.value)) // avoid boxing on the heap
+	} else {
+		return []byte("null"), nil
+	}
+}
+
+func (o *Option[T]) UnmarshalJSON(data []byte) error {
+	if o == nil {
+		panic("Option is nil")
+	}
+	if string(data) == "null" {
+		*o = Option[T]{}
+		return nil
+	}
+	if err := jsonv1.Unmarshal(data, &o.value); err != nil {
+		*o = Option[T]{}
+		return err
+	}
+	o.valid = true
+	return nil
+}
 
 func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if o.valid {
@@ -145,7 +174,7 @@ func elem[P ~*E, E any](p P) any {
 	typ := reflect.TypeFor[E]()
 	return *(*any)(unsafe.Pointer(&iface{
 		Type: (*iface)(unsafe.Pointer(&typ)).Data,
-		Data: noEscape(unsafe.Pointer(p)),
+		Data: unsafe.Pointer(noEscape(p)),
 	}))
 }
 
@@ -154,7 +183,7 @@ type iface struct {
 }
 
 //go:nosplit
-func noEscape(p unsafe.Pointer) unsafe.Pointer {
-	x := uintptr(p)
-	return unsafe.Pointer(x ^ 0) //nolint:all
+func noEscape[P ~*E, E any](p P) P {
+	x := uintptr(unsafe.Pointer(p))
+	return P(unsafe.Pointer(x ^ 0)) //nolint:all
 }
