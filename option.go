@@ -106,20 +106,25 @@ func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 	}
 }
 
-func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if dec.PeekKind() != 'n' {
-		err := json.UnmarshalDecode(dec, &o.value)
-		if err == nil {
-			o.valid = true
-		}
-		return err
-	} else {
-		_, err := dec.ReadToken()
-		if err == nil {
-			*o = None[T]()
-		}
-		return err
+func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) (err error) {
+	if o == nil {
+		panic("Option is nil")
 	}
+	if kind := dec.PeekKind(); isKindValid(kind) && kind != 'n' {
+		if err = json.UnmarshalDecode(dec, &o.value); err == nil {
+			o.valid = true
+		} else {
+			*o = Option[T]{}
+		}
+	} else {
+		_, err = dec.ReadToken()
+		*o = Option[T]{}
+	}
+	return
+}
+
+func isKindValid(k jsontext.Kind) bool {
+	return k == 'n' || k == 'f' || k == 't' || k == '"' || k == '0' || k == '{' || k == '}' || k == '[' || k == ']'
 }
 
 func (o Option[T]) IsZero() bool {
