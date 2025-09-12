@@ -6,6 +6,7 @@ package option
 import (
 	"fmt"
 	"reflect"
+	"structs"
 	"unsafe"
 
 	"github.com/go-json-experiment/json"
@@ -14,8 +15,9 @@ import (
 )
 
 type Option[T any] struct {
-	value T
+	_     structs.HostLayout
 	valid bool
+	value T
 }
 
 var (
@@ -29,7 +31,7 @@ var (
 
 // Return a `Some` value containing the given value.
 func Some[T any](value T) Option[T] {
-	return Option[T]{value: value, valid: true}
+	return Option[T]{valid: true, value: value}
 }
 
 // Returns a `None` value of type T.
