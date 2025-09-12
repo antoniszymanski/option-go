@@ -138,12 +138,9 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 }
 
 // MarshalJSONTo implements the [json.MarshalerTo] interface.
-// It will write the null token if the option is a None value.
+// It will write the null token if the option is a None value or if the option is nil.
 func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
-	if o == nil {
-		panic("option is nil")
-	}
-	if o.valid {
+	if o != nil && o.valid {
 		return json.MarshalEncode(enc, &o.value) // avoid boxing on the heap
 	} else {
 		return enc.WriteToken(jsontext.Null)
