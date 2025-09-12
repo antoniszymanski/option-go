@@ -1,8 +1,6 @@
 ## option-go
 
-Go implementation of Rust-like Option type.
-
-Implements following interfaces:
+Go implementation of Rust-like Option type, that implements following interfaces:
 
 - [fmt.Stringer](https://pkg.go.dev/fmt#Stringer)
 - [fmt.GoStringer](https://pkg.go.dev/fmt#GoStringer)
