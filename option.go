@@ -158,15 +158,13 @@ func isKindValid(k jsontext.Kind) bool {
 }
 
 func (o Option[T]) IsZero() bool {
-	if o.valid {
-		a := elem(&o.value)
-		if i, ok := a.(interface{ IsZero() bool }); ok {
-			return i.IsZero()
-		}
-		return reflect.ValueOf(a).IsZero()
-	} else {
+	if !o.valid {
 		return true
 	}
+	if i, ok := elem(&o.value).(interface{ IsZero() bool }); ok {
+		return i.IsZero()
+	}
+	return false
 }
 
 //go:nosplit
