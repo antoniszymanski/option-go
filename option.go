@@ -113,9 +113,6 @@ func (o Option[T]) MarshalJSON() ([]byte, error) {
 }
 
 func (o *Option[T]) UnmarshalJSON(data []byte) error {
-	if o == nil {
-		panic("Option is nil")
-	}
 	if string(data) == "null" {
 		*o = Option[T]{}
 		return nil
@@ -137,9 +134,6 @@ func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) (err error) {
-	if o == nil {
-		panic("Option is nil")
-	}
 	if kind := dec.PeekKind(); isKindValid(kind) && kind != 'n' {
 		if err = json.UnmarshalDecode(dec, &o.value); err == nil {
 			o.valid = true
