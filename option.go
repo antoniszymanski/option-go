@@ -122,6 +122,9 @@ func (o Option[T]) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the [json.Unmarshaler] interface.
 // Only null will be decoded as a None value.
 func (o *Option[T]) UnmarshalJSON(data []byte) error {
+	if o == nil {
+		panic("option is nil")
+	}
 	if string(data) == "null" {
 		*o = Option[T]{}
 		return nil
@@ -137,6 +140,9 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 // MarshalJSONTo implements the [json.MarshalerTo] interface.
 // It will write the null token if the option is a None value.
 func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
+	if o == nil {
+		panic("option is nil")
+	}
 	if o.valid {
 		return json.MarshalEncode(enc, &o.value) // avoid boxing on the heap
 	} else {
@@ -147,6 +153,9 @@ func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 // UnmarshalJSONFrom implements the [json.UnmarshalerFrom] interface.
 // Only null will be decoded as a None value.
 func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) (err error) {
+	if o == nil {
+		panic("option is nil")
+	}
 	if kind := dec.PeekKind(); isKindValid(kind) && kind != 'n' {
 		if err = json.UnmarshalDecode(dec, &o.value); err == nil {
 			o.valid = true
