@@ -163,6 +163,9 @@ func (o Option[T]) IsZero() bool {
 
 //go:nosplit
 func elem[P ~*E, E any](p P) any {
+	if p == nil {
+		return nil
+	}
 	typ := reflect.TypeFor[E]()
 	return *(*any)(unsafe.Pointer(&iface{
 		Type: (*iface)(unsafe.Pointer(&typ)).Data,
