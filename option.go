@@ -29,27 +29,27 @@ var (
 	_ json.UnmarshalerFrom = (*Option[int])(nil)
 )
 
-// Return a `Some` value containing the given value.
+// Some returns a Some value containing the given value.
 func Some[T any](value T) Option[T] {
 	return Option[T]{valid: true, value: value}
 }
 
-// Returns a `None` value of type T.
+// None returns a None value of type T.
 func None[T any]() Option[T] {
 	return Option[T]{}
 }
 
-// Returns true if the option is a `Some` value.
+// IsSome reports whether the option is a Some value.
 func (o Option[T]) IsSome() bool {
 	return o.valid
 }
 
-// Returns true if the option is a `None` value.
+// IsNone reports whether the option is a None value.
 func (o Option[T]) IsNone() bool {
 	return !o.valid
 }
 
-// Returns the contained `Some` value or panics with a custom panic message provided by msg.
+// Expect returns the contained value or panics with a custom panic message provided by msg.
 func (o Option[T]) Expect(msg string) T {
 	if o.valid {
 		return o.value
@@ -58,16 +58,16 @@ func (o Option[T]) Expect(msg string) T {
 	}
 }
 
-// Returns the contained `Some` value or panics with a generic message.
+// Unwrap returns the contained value or panics with a generic message.
 func (o Option[T]) Unwrap() T {
 	if o.valid {
 		return o.value
 	} else {
-		panic("called `Option.Unwrap()` on a `None` value")
+		panic(`called Unwrap on a None value`)
 	}
 }
 
-// Returns the contained `Some` value or a provided fallback.
+// UnwrapOr returns the contained value or a provided fallback.
 func (o Option[T]) UnwrapOr(fallback T) T {
 	if o.valid {
 		return o.value
@@ -76,7 +76,7 @@ func (o Option[T]) UnwrapOr(fallback T) T {
 	}
 }
 
-// Returns the contained `Some` value or computes it from a closure.
+// UnwrapOrElse returns the contained value or computes it from a closure.
 func (o Option[T]) UnwrapOrElse(fn func() T) T {
 	if o.valid {
 		return o.value
@@ -85,11 +85,12 @@ func (o Option[T]) UnwrapOrElse(fn func() T) T {
 	}
 }
 
-// Returns the contained `Some` value or the zero value for type T.
+// UnwrapOrZero returns the contained value or the zero value for type T.
 func (o Option[T]) UnwrapOrZero() T {
 	return o.value
 }
 
+// String implements the [fmt.Stringer] interface.
 func (o Option[T]) String() string {
 	if o.valid {
 		return fmt.Sprintf("Some(%v)", elem(&o.value))
@@ -98,6 +99,7 @@ func (o Option[T]) String() string {
 	}
 }
 
+// GoString implements the [fmt.GoStringer] interface.
 func (o Option[T]) GoString() string {
 	if o.valid {
 		return fmt.Sprintf("option.Some(%#v)", elem(&o.value))
@@ -106,6 +108,8 @@ func (o Option[T]) GoString() string {
 	}
 }
 
+// MarshalJSON implements the [json.Marshaler] interface.
+// It will write the null token if the option is a None value.
 func (o Option[T]) MarshalJSON() ([]byte, error) {
 	if o.valid {
 		return jsonv1.Marshal(noEscape(&o.value)) // avoid boxing on the heap
@@ -114,6 +118,8 @@ func (o Option[T]) MarshalJSON() ([]byte, error) {
 	}
 }
 
+// UnmarshalJSON implements the [json.Unmarshaler] interface.
+// Only null will be decoded as a None value.
 func (o *Option[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		*o = Option[T]{}
@@ -127,6 +133,8 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSONTo implements the [json.MarshalerTo] interface.
+// It will write the null token if the option is a None value.
 func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if o.valid {
 		return json.MarshalEncode(enc, &o.value) // avoid boxing on the heap
@@ -135,6 +143,8 @@ func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
 	}
 }
 
+// UnmarshalJSONFrom implements the [json.UnmarshalerFrom] interface.
+// Only null will be decoded as a None value.
 func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) (err error) {
 	if kind := dec.PeekKind(); isKindValid(kind) && kind != 'n' {
 		if err = json.UnmarshalDecode(dec, &o.value); err == nil {
@@ -153,6 +163,8 @@ func isKindValid(k jsontext.Kind) bool {
 	return k == 'n' || k == 'f' || k == 't' || k == '"' || k == '0' || k == '{' || k == '}' || k == '[' || k == ']'
 }
 
+// IsZero reports whether the option is a None value or if the contained value
+// implements an "IsZero() bool" method that reports true.
 func (o Option[T]) IsZero() bool {
 	if !o.valid {
 		return true
