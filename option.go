@@ -64,7 +64,7 @@ func (o Option[T]) Unwrap() T {
 	if o.valid {
 		return o.value
 	} else {
-		panic(`called Unwrap on a None value`)
+		panic("called Unwrap on a None value")
 	}
 }
 
