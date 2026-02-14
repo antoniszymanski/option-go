@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2025 Antoni Szymański
 // SPDX-License-Identifier: MPL-2.0
 
-// Package option provides Rust-like Option type.
 package option
 
 import (
@@ -21,36 +20,38 @@ type Option[T any] struct {
 	value T
 }
 
-var (
-	_ fmt.Stringer         = (*Option[int])(nil)
-	_ fmt.GoStringer       = (*Option[int])(nil)
-	_ json.Marshaler       = (*Option[int])(nil)
-	_ json.Unmarshaler     = (*Option[int])(nil)
-	_ json.MarshalerTo     = (*Option[int])(nil)
-	_ json.UnmarshalerFrom = (*Option[int])(nil)
-)
-
-// Some returns a Some value containing the given value.
 func Some[T any](value T) Option[T] {
 	return Option[T]{valid: true, value: value}
 }
 
-// None returns a None value of type T.
 func None[T any]() Option[T] {
 	return Option[T]{}
 }
 
-// IsSome reports whether the option is a Some value.
 func (o Option[T]) IsSome() bool {
 	return o.valid
 }
 
-// IsNone reports whether the option is a None value.
 func (o Option[T]) IsNone() bool {
 	return !o.valid
 }
 
-// Expect returns the contained value or panics with a custom panic message provided by msg.
+func (o Option[T]) IsSomeAnd(f func(T) bool) bool {
+	return o.valid && f(o.value)
+}
+
+func (o Option[T]) IsNoneOr(f func(T) bool) bool {
+	return !o.valid || f(o.value)
+}
+
+func (o Option[T]) AsSlice() []T {
+	if o.valid {
+		return unsafe.Slice(&o.value, 1)
+	} else {
+		return nil
+	}
+}
+
 func (o Option[T]) Expect(msg string) T {
 	if o.valid {
 		return o.value
@@ -59,7 +60,6 @@ func (o Option[T]) Expect(msg string) T {
 	}
 }
 
-// Unwrap returns the contained value or panics with a generic message.
 func (o Option[T]) Unwrap() T {
 	if o.valid {
 		return o.value
@@ -68,7 +68,6 @@ func (o Option[T]) Unwrap() T {
 	}
 }
 
-// UnwrapOr returns the contained value or a provided fallback.
 func (o Option[T]) UnwrapOr(fallback T) T {
 	if o.valid {
 		return o.value
@@ -77,21 +76,105 @@ func (o Option[T]) UnwrapOr(fallback T) T {
 	}
 }
 
-// UnwrapOrElse returns the contained value or computes it from a closure.
-func (o Option[T]) UnwrapOrElse(fn func() T) T {
-	if o.valid {
-		return o.value
-	} else {
-		return fn()
-	}
-}
-
-// UnwrapOrZero returns the contained value or the zero value for type T.
 func (o Option[T]) UnwrapOrZero() T {
 	return o.value
 }
 
-// String implements the [fmt.Stringer] interface.
+func (o Option[T]) UnwrapOrElse(f func() T) T {
+	if o.valid {
+		return o.value
+	} else {
+		return f()
+	}
+}
+
+func (o Option[T]) Filter(predicate func(*T) bool) Option[T] {
+	if o.valid && predicate(&o.value) {
+		return o
+	} else {
+		return Option[T]{}
+	}
+}
+
+func (o Option[T]) Inspect(f func(*T)) Option[T] {
+	if o.valid {
+		f(&o.value)
+	}
+	return o
+}
+
+func (o Option[T]) Map(f func(T) T) Option[T] {
+	if o.valid {
+		return Option[T]{valid: true, value: f(o.value)}
+	} else {
+		return Option[T]{}
+	}
+}
+
+func (o Option[T]) MapOr(fallback T, f func(T) T) T {
+	if o.valid {
+		return f(o.value)
+	} else {
+		return fallback
+	}
+}
+
+func (o Option[T]) MapOrElse(fallback func() T, f func(T) T) T {
+	if o.valid {
+		return f(o.value)
+	} else {
+		return fallback()
+	}
+}
+
+func (o Option[T]) And(other Option[T]) Option[T] {
+	if o.valid {
+		return other
+	} else {
+		return Option[T]{}
+	}
+}
+
+func (o Option[T]) Or(other Option[T]) Option[T] {
+	if o.valid {
+		return o
+	} else {
+		return other
+	}
+}
+
+func (o Option[T]) Xor(other Option[T]) Option[T] {
+	switch {
+	case o.valid && !other.valid:
+		return o
+	case !o.valid && other.valid:
+		return other
+	default:
+		return Option[T]{}
+	}
+}
+
+func (o Option[T]) AndThen(f func(T) Option[T]) Option[T] {
+	if o.valid {
+		return f(o.value)
+	} else {
+		return Option[T]{}
+	}
+}
+
+func (o Option[T]) OrElse(f func() Option[T]) Option[T] {
+	if o.valid {
+		return o
+	} else {
+		return f()
+	}
+}
+
+var (
+	_ fmt.Stringer   = Option[int]{}
+	_ fmt.GoStringer = Option[int]{}
+)
+
 func (o Option[T]) String() string {
 	if o.valid {
 		return fmt.Sprintf("Some(%v)", elem(&o.value))
@@ -100,7 +183,6 @@ func (o Option[T]) String() string {
 	}
 }
 
-// GoString implements the [fmt.GoStringer] interface.
 func (o Option[T]) GoString() string {
 	if o.valid {
 		return fmt.Sprintf("option.Some(%#v)", elem(&o.value))
@@ -109,22 +191,22 @@ func (o Option[T]) GoString() string {
 	}
 }
 
-// MarshalJSON implements the [json.Marshaler] interface.
-// It will write the null token if the option is a None value.
+var (
+	_ json.Marshaler       = Option[int]{}
+	_ json.Unmarshaler     = &Option[int]{}
+	_ json.MarshalerTo     = &Option[int]{}
+	_ json.UnmarshalerFrom = &Option[int]{}
+)
+
 func (o Option[T]) MarshalJSON() ([]byte, error) {
 	if o.valid {
-		return jsonv1.Marshal(noEscape(&o.value)) // avoid boxing on the heap
+		return jsonv1.Marshal(&o.value) // avoid boxing on the heap
 	} else {
 		return []byte("null"), nil
 	}
 }
 
-// UnmarshalJSON implements the [json.Unmarshaler] interface.
-// Only null will be decoded as a None value.
 func (o *Option[T]) UnmarshalJSON(data []byte) error {
-	if o == nil {
-		panic("option is nil")
-	}
 	if string(data) == "null" {
 		*o = Option[T]{}
 		return nil
@@ -137,41 +219,33 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSONTo implements the [json.MarshalerTo] interface.
-// It will write the null token if the option is a None value or if the option is nil.
 func (o *Option[T]) MarshalJSONTo(enc *jsontext.Encoder) error {
-	if o != nil && o.valid {
+	if o.valid {
 		return json.MarshalEncode(enc, &o.value) // avoid boxing on the heap
 	} else {
 		return enc.WriteToken(jsontext.Null)
 	}
 }
 
-// UnmarshalJSONFrom implements the [json.UnmarshalerFrom] interface.
-// Only null will be decoded as a None value.
-func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) (err error) {
-	if o == nil {
-		panic("option is nil")
-	}
-	if kind := dec.PeekKind(); isKindValid(kind) && kind != 'n' {
-		if err = json.UnmarshalDecode(dec, &o.value); err == nil {
-			o.valid = true
-		} else {
-			*o = Option[T]{}
-		}
-	} else {
-		_, err = dec.ReadToken()
+func (o *Option[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch dec.PeekKind() {
+	case jsontext.KindInvalid:
 		*o = Option[T]{}
+		_, err := dec.ReadToken()
+		return err
+	case jsontext.KindNull:
+		*o = Option[T]{}
+		return nil
+	default:
+		if err := json.UnmarshalDecode(dec, &o.value); err != nil {
+			*o = Option[T]{}
+			return err
+		}
+		o.valid = true
+		return nil
 	}
-	return
 }
 
-func isKindValid(k jsontext.Kind) bool {
-	return k == 'n' || k == 'f' || k == 't' || k == '"' || k == '0' || k == '{' || k == '}' || k == '[' || k == ']'
-}
-
-// IsZero reports whether the option is a None value or if the contained value
-// implements an "IsZero() bool" method that reports true.
 func (o Option[T]) IsZero() bool {
 	if !o.valid {
 		return true
