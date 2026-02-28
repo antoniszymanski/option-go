@@ -256,6 +256,16 @@ func (o Option[T]) IsZero() bool {
 	return false
 }
 
+func (Option[T]) isOption() {}
+
+func IsOption(typ reflect.Type) bool {
+	_, ok := (*(*any)(unsafe.Pointer(&iface{
+		Type: (*iface)(unsafe.Pointer(&typ)).Data,
+		Data: nil,
+	}))).(interface{ isOption() })
+	return ok
+}
+
 //go:nosplit
 func elem[P ~*E, E any](p P) any {
 	if p == nil {
